@@ -49,6 +49,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
 ROOT_URLCONF = 'wishapp.urls'
 
 TEMPLATES = [
