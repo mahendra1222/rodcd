@@ -2,7 +2,11 @@ name: Django CI/CD
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+  pull_request:
+    branches:
+      - mahi
 
 jobs:
   deploy:
