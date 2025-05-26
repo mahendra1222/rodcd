@@ -2,37 +2,47 @@ name: Django CI/CD
 
 on:
   push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - main
-      - mahi
+    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
-    - name: Deploy via SSH
+    - name: Install dependencies
       run: |
-        ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          cd /home/ubuntu/your_project_dir
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Django check
+      run: |
+        python manage.py check
+
+    - name: Test Django (optional if you have tests)
+      run: |
+        python manage.py test || echo "No tests found"
+
+    - name: Deploy to EC2 via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd /home/ubuntu/rodcd
           git pull origin main
           source venv/bin/activate
           pip install -r requirements.txt
-          python manage.py migrate
+          python manage.py migrate --noinput
           python manage.py collectstatic --noinput
           sudo systemctl restart gunicorn
-          sudo systemctl reload nginx
-        EOF
+          sudo systemctl restart nginx
